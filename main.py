@@ -14,14 +14,22 @@ RED   = (255, 0, 0)
 GREEN = (0, 255, 0)
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
+TRANSPARENT = (0,0,0,0)
 
-#Screen settings
+#Constant
 SCREEN_WIDTH = 720
 SCREEN_HEIGHT = 720
+PLAN_BOMBS = 0
+PLAN_IMG = 1
+global FLAG_PLAYING
+FLAG_PLAYING = 1
 
 DISPLAYSURF = pygame.display.set_mode((SCREEN_WIDTH,SCREEN_HEIGHT))
 DISPLAYSURF.fill(BLACK)
 pygame.display.set_caption("Minesweeper")
+pygame.font.init()
+font = pygame.font.SysFont('Comic Sans MS', 30)
+gameovertxt = font.render('GAME OVER', True, RED)
 
 image0 = pygame.image.load("0.png")
 image1 = pygame.image.load("1.png")
@@ -34,29 +42,30 @@ image7 = pygame.image.load("7.png")
 image8 = pygame.image.load("8.png")
 imageBomb = pygame.image.load("-1.png")
 flagimg = pygame.image.load("flag.png")
+noneimg = pygame.image.load("none.png")
 
 #gameplaysettings
-GRID_SIZE =20
-NUMBER_BOMBS = 10
-SIZE_BOX = 30
+GRID_SIZE = 20
+NUMBER_BOMBS = 50
+SIZE_BOX = 30 # DO NOT CHANGE (or change png too)
 board = np.zeros((2,GRID_SIZE, GRID_SIZE))
 
 
 def main():
     initGame()
+    
     while True:
         pygame.display.update()
         drawingGrid(GRID_SIZE,50,50)
-
-        mouseState = pygame.mouse.get_pressed()
-        if mouseState[0]:
-            # leftclick
-            leftClicked(matchingCoord(pygame.mouse.get_pos(),50,50))
-        if mouseState[2]:
-            #rightclick
-            rightClicked(matchingCoord(pygame.mouse.get_pos(),50,50))
-
         for event in pygame.event.get():
+            
+            if event.type == pygame.MOUSEBUTTONDOWN and FLAG_PLAYING:
+                if event.button == 1:
+                    # LEFT
+                    leftClicked(matchingCoord(pygame.mouse.get_pos(),50,50))
+                elif event.button == 3:
+                    # RIGHT 
+                    rightClicked(matchingCoord(pygame.mouse.get_pos(),50,50))
             if event.type == QUIT:
                 pygame.quit()
                 sys.exit()
@@ -65,7 +74,7 @@ def main():
 def initGame():
     for i in range(NUMBER_BOMBS):
         randindex = np.random.randint(0,board.size/2)
-        board[0,randindex//GRID_SIZE,randindex%GRID_SIZE] = -1
+        board[PLAN_BOMBS,randindex//GRID_SIZE,randindex%GRID_SIZE] = -1
 
     for y in range(GRID_SIZE):
         for x in range(GRID_SIZE):
@@ -74,26 +83,26 @@ def initGame():
 
 def updateAround(x, y):
     bombsHere = 0
-    if (board[0,x,y] == -1):
+    if (board[PLAN_BOMBS,x,y] == -1):
         return
     else:
-        if x < GRID_SIZE-1 and board[0,x+1,y] == -1:
+        if x < GRID_SIZE-1 and board[PLAN_BOMBS,x+1,y] == -1:
             bombsHere += 1
-        if x < GRID_SIZE-1 and y < GRID_SIZE-1 and board[0,x+1,y+1] == -1:
+        if x < GRID_SIZE-1 and y < GRID_SIZE-1 and board[PLAN_BOMBS,x+1,y+1] == -1:
             bombsHere += 1
-        if y < GRID_SIZE-1 and board[0,x,y+1] == -1:
+        if y < GRID_SIZE-1 and board[PLAN_BOMBS,x,y+1] == -1:
             bombsHere += 1
-        if x > 0 and y < GRID_SIZE-1 and board[0,x-1,y+1] == -1:
+        if x > 0 and y < GRID_SIZE-1 and board[PLAN_BOMBS,x-1,y+1] == -1:
             bombsHere += 1
-        if x > 0 and board[0,x-1,y] == -1:
+        if x > 0 and board[PLAN_BOMBS,x-1,y] == -1:
             bombsHere += 1
-        if x > 0 and y > 0 and board[0,x-1,y-1] == -1:
+        if x > 0 and y > 0 and board[PLAN_BOMBS,x-1,y-1] == -1:
             bombsHere += 1
-        if y > 0 and board[0,x,y-1] == -1:
+        if y > 0 and board[PLAN_BOMBS,x,y-1] == -1:
             bombsHere += 1
-        if y > 0 and x < GRID_SIZE-1 and board[0,x+1,y-1] == -1:
+        if y > 0 and x < GRID_SIZE-1 and board[PLAN_BOMBS,x+1,y-1] == -1:
             bombsHere += 1
-        board[0,x,y] = bombsHere
+        board[PLAN_BOMBS,x,y] = bombsHere
         
 def drawingGrid(gridSize=20, offsetX = 0, offsetY = 0):
     #verical lines
@@ -107,7 +116,7 @@ def drawingGrid(gridSize=20, offsetX = 0, offsetY = 0):
 def drawingBoard(offsetX = 0, offsetY = 0):
     for y in range(GRID_SIZE):
         for x in range(GRID_SIZE):            
-            match board[0,x,y]:
+            match board[PLAN_BOMBS,x,y]:
                 case 0:
                     imageToPrint = image0
                 case 1:
@@ -130,10 +139,13 @@ def drawingBoard(offsetX = 0, offsetY = 0):
                     imageToPrint = imageBomb
                 case _:        
                     print("No matching to img")
-            if board[1,x,y] == 1:
+            if board[PLAN_IMG,x,y] == 0:
+                DISPLAYSURF.blit(noneimg, (offsetX+x*SIZE_BOX,offsetY+SIZE_BOX*y))
+            elif board[PLAN_IMG,x,y] == 1:
                 DISPLAYSURF.blit(imageToPrint, (offsetX+x*SIZE_BOX,offsetY+SIZE_BOX*y))
-            elif board[1,x,y] == 2:
+            elif board[PLAN_IMG,x,y] == 2:
                 DISPLAYSURF.blit(flagimg, (offsetX+x*SIZE_BOX,offsetY+SIZE_BOX*y))
+
 
 def matchingCoord(pos, offsetX, offsetY):
     x = (pos[0]-offsetX)//(SIZE_BOX)
@@ -141,16 +153,73 @@ def matchingCoord(pos, offsetX, offsetY):
     return (x,y)
 
 def leftClicked(coord):
-    if board[0,coord[0],coord[1]] == -1:
-        print("BOMB")
+    board[PLAN_IMG,coord[0],coord[1]] = 1
+    if board[PLAN_BOMBS,coord[0],coord[1]] == -1:
+        gameOver()
     else:
-        board[1,coord[0],coord[1]] = 1
+        # theres no bomb arround
+        revealAround(coord)
  
 def rightClicked(coord):
-    if board[1,coord[0],coord[1]] == 2:
-        board[1,coord[0],coord[1]] = 0
-        print("RMEVOE")
-    elif board[1,coord[0],coord[1]] == 0:
-        board[1,coord[0],coord[1]] = 2
+    if board[PLAN_IMG,coord[0],coord[1]] == 2:
+        board[PLAN_IMG,coord[0],coord[1]] = 0
+    elif board[PLAN_IMG,coord[0],coord[1]] == 0:
+        board[PLAN_IMG,coord[0],coord[1]] = 2
+
+def revealAround(coord):
+    if (board[PLAN_BOMBS,coord[0],coord[1]] == 0):
+        x = coord[0]
+        y = coord[1]
+
+        if x < GRID_SIZE-1 and board[PLAN_IMG,x+1,y] != 1:
+            board[PLAN_IMG,x+1,y] = 1
+            if board[PLAN_BOMBS,x+1,y] == 0:
+                revealAround((x+1,y))
+            
+        if x < GRID_SIZE-1 and y < GRID_SIZE-1 and board[PLAN_IMG,x+1,y+1] != 1:
+            board[PLAN_IMG,x+1,y+1] = 1
+            if board[PLAN_BOMBS,x+1,y+1] == 0:
+                revealAround((x+1,y+1))
+
+        if y < GRID_SIZE-1 and board[PLAN_IMG,x,y+1] != 1:
+            board[PLAN_IMG,x,y+1] = 1
+            if board[PLAN_BOMBS,x,y+1] == 0:
+                revealAround((x,y+1))
+
+        if x > 0 and y < GRID_SIZE-1 and board[PLAN_IMG,x-1,y+1] != 1:
+            board[PLAN_IMG,x-1,y+1] = 1
+            if board[PLAN_BOMBS,x-1,y+1] == 0:
+                revealAround((x-1,y+1))
+
+        if x > 0 and board[PLAN_IMG,x-1,y] != 1:
+            board[PLAN_IMG,x-1,y] = 1
+            if board[PLAN_BOMBS,x-1,y] == 0:
+                revealAround((x-1,y))
+
+        if x > 0 and y > 0 and board[PLAN_IMG,x-1,y-1] != 1:
+            board[PLAN_IMG,x-1,y-1] = 1
+            if board[PLAN_BOMBS,x-1,y-1] == 0:
+                revealAround((x-1,y-1))
+            
+        if y > 0  and board[PLAN_IMG,x,y-1] != 1:
+            board[PLAN_IMG,x,y-1] = 1
+            if board[PLAN_BOMBS,x,y-1] == 0:
+                revealAround((x,y-1))
+
+        if y > 0 and x < GRID_SIZE-1 and board[PLAN_IMG,x+1,y-1] != 1:
+            board[PLAN_IMG,x+1,y-1] = 1
+            if board[PLAN_BOMBS,x+1,y-1] == 0:
+                revealAround((x+1,y-1))
+    return 
+
+def gameOver():
+    global FLAG_PLAYING
+    FLAG_PLAYING = 0
+    # display every bombs
+    for y in range(GRID_SIZE):
+        for x in range(GRID_SIZE):
+            if board[PLAN_BOMBS,x,y] == -1:
+                board[PLAN_IMG,x,y] = 1
+
 
 main()
